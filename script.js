@@ -1,4 +1,4 @@
-  
+        
     const CONFIG = { YT_MAX_RESULTS: 25, API_KEYS: [ "AIzaSyCzu-Mqx22V83ktalXksUnC1AhtZwzyb-0","AIzaSyBM-uvKMHe5GxNuMpWB45-RWVUGYOGwEyQ","AIzaSyAd6JdvYn7YGMfSY9EaJtCEUGd11tKa6ZI","AIzaSyBr2nxeKaN1q07fMV59zrLEOQx9dzYBsMI","AIzaSyBbnepAY-irFm35H7Qu0NrwISzLCThkBKM","AIzaSyAujlR4Gig8puLuzM-amckcwu5sbMRvIR0","AIzaSyBiGJ9JeOdkrUI7x-qQHyrHpUJAxcwRTvI","AIzaSyC_UCUc3zcffX5_IOPFpqbJyXmUYxKOg9U","AIzaSyC7FYbsVmGA0LnepHG7t_xPOR0mEkQ1jiE","AIzaSyBLTPa7EUAmnJZMq4sYBT97x4HY3--YHws","AIzaSyDWAi-0_oqg5GHwEoE0_LnSLSV_nsfs1SI","AIzaSyBJ6zZI3BFvBd02EcdsJFE7dLdZ-f7RV9c","AIzaSyD_9Flh18VT4hJ0OkEIS3TCECJ4vIOcfC0","AIzaSyC3_rIZ5deseDbte7auVOo7oUDjopEMaBg","AIzaSyA9jC-p2NtbeppL8x0YKQqNkrdOggt3Q48" ], STORAGE_PREFIX: 'mp_' };
     const state = { visiblePlayer: null, hiddenPlayer: null, playersReady: false, pendingPlay: null, queuedTrack: null, currentKeyIndex: 0, currentTrack: null, currentQueue: [], currentQueueIndex: 0, favorites: [], libraries: [], recents: [], currentPage: 'home', isShuffle: false, isLoop: false, transferInProgress: false, isPlaying: false, lastPage: 'home', isSeeking: false, progressInterval: null, touchStartY: 0, touchMoveY: 0 };
     
@@ -26,48 +26,7 @@
     // ==== FIN DE CAMBIO 2 (JS - dom) ====
 
     (function loadYT(){ if (!window.YT) { const tag = document.createElement('script'); tag.src = "https://www.youtube.com/iframe_api"; document.body.appendChild(tag); } else if (window.YT && window.YT.Player) { if (typeof window.onYouTubeIframeAPIReady === 'function') window.onYouTubeIframeAPIReady(); } })();
-window.onYouTubeIframeAPIReady = function() {
-    try {
-        const commonPlayerVars = {
-            playsinline: 1,
-            controls: 0,
-            disablekb: 1,
-            modestbranding: 1,
-            rel: 0,
-            showinfo: 0,
-            iv_load_policy: 3, // desactiva anotaciones
-            origin: location.origin // ayuda a estabilizar el contexto de reproducción
-        };
-
-        state.visiblePlayer = new YT.Player(dom.ytVisibleHolder, {
-            height: '100%',
-            width: '100%',
-            playerVars: commonPlayerVars,
-            events: {
-                'onReady': onVisibleReady,
-                'onStateChange': onPlayerStateChange,
-                'onError': (e) => console.warn("visiblePlayer error", e)
-            }
-        });
-
-        // mantenemos hiddenPlayer (si quieres seguir soportando la transferencia),
-        // pero con los mismos playerVars.
-        state.hiddenPlayer = new YT.Player(dom.ytHiddenHolder, {
-            height: '1',
-            width: '1',
-            playerVars: commonPlayerVars,
-            events: {
-                'onReady': onHiddenReady,
-                'onStateChange': onPlayerStateChange,
-                'onError': (e) => console.warn("hiddenPlayer error", e)
-            }
-        });
-    } catch (e) {
-        console.error("YT create error:", e);
-    }
-};
-
-    
+    window.onYouTubeIframeAPIReady = function() { try { state.visiblePlayer = new YT.Player(dom.ytVisibleHolder, { height: '100%', width: '100%', playerVars: {'playsinline':1,'controls':0,'disablekb':1,'modestbranding':1,'rel':0,'showinfo':0}, events: {'onReady': onVisibleReady,'onStateChange': onPlayerStateChange,'onError': (e) => console.warn("visiblePlayer error", e)}}); state.hiddenPlayer = new YT.Player(dom.ytHiddenHolder, { height: '1', width: '1', playerVars: {'playsinline':1,'controls':0,'disablekb':1,'modestbranding':1,'rel':0,'showinfo':0}, events: {'onReady': onHiddenReady,'onStateChange': onPlayerStateChange,'onError': (e) => console.warn("hiddenPlayer error", e)}}); } catch (e) { console.error("YT create error:", e); } };
     function onVisibleReady() { checkPlayersReady(); }
     function onHiddenReady() { checkPlayersReady(); }
     function checkPlayersReady() { if (!state.visiblePlayer || !state.hiddenPlayer) return; state.playersReady = true; try { const iframeV = state.visiblePlayer.getIframe(); const iframeH = state.hiddenPlayer.getIframe(); if (iframeV) iframeV.setAttribute('allow', 'autoplay; encrypted-media; fullscreen'); if (iframeH) iframeH.setAttribute('allow', 'autoplay; encrypted-media; fullscreen'); } catch (e) {} resizePlayers(); if (state.pendingPlay) { const p = state.pendingPlay; state.pendingPlay = null; loadAndPlayById(p.videoId, p.autoplay); } if (state.queuedTrack) { const { video, queue, queueIndex } = state.queuedTrack; state.queuedTrack = null; playTrack(video, queue, queueIndex); } }
@@ -168,41 +127,7 @@ window.onYouTubeIframeAPIReady = function() {
     window.addEventListener('resize', () => { resizePlayers(); });
     
     function getActivePlayer() { return document.hidden ? (state.hiddenPlayer || state.visiblePlayer) : (state.visiblePlayer || state.hiddenPlayer); }
-function loadAndPlayById(videoId, autoplay = true) {
-    if (!videoId || !state.playersReady) {
-        state.pendingPlay = { videoId, autoplay };
-        return;
-    }
-
-    const target = getActivePlayer();
-    const other = (target === state.visiblePlayer) ? state.hiddenPlayer : state.visiblePlayer;
-
-    try {
-        // Intentamos pausar el otro (no hacer stopVideo inmediatamente)
-        try { if (other && other.pauseVideo) other.pauseVideo(); } catch(e){}
-
-        // Preferir cueVideoById para preparar sin forzar una recarga que pueda disparar prerolls.
-        if (typeof target.cueVideoById === 'function') {
-            target.cueVideoById({ videoId, startSeconds: 0 });
-
-            if (autoplay) {
-                // Pequeño retraso para permitir que el player esté listo antes de play()
-                setTimeout(() => {
-                    try { target.playVideo(); } catch (e) { console.warn("play after cue failed", e); }
-                }, 150);
-            }
-        } else if (typeof target.loadVideoById === 'function') {
-            // Fallback: si cue no existe, usar loadVideoById
-            target.loadVideoById({ videoId, startSeconds: 0 });
-            if (autoplay) setTimeout(()=>{ try{ target.playVideo(); }catch(e){} }, 100);
-        }
-    } catch (e) {
-        console.error("Error loadAndPlayById:", e);
-    }
-}
-
-    
-    
+    function loadAndPlayById(videoId, autoplay = true) { if (!videoId || !state.playersReady) { state.pendingPlay = { videoId, autoplay }; return; } const target = getActivePlayer(); const other = (target === state.visiblePlayer) ? state.hiddenPlayer : state.visiblePlayer; try { try { if (other && other.stopVideo) other.stopVideo(); } catch(e){} if (typeof target.loadVideoById === 'function') { target.loadVideoById({ videoId, startSeconds: 0 }); if (autoplay) setTimeout(()=>{ try{ target.playVideo(); }catch(e){} }, 100); } else if (typeof target.cueVideoById === 'function') { target.cueVideoById({ videoId, startSeconds: 0 }); if (autoplay) setTimeout(()=>{ try{ target.playVideo(); }catch(e){} }, 100); } } catch (e) { console.error("Error loadAndPlayById:", e); } }
     function playTrack(video, queue = [], queueIndex = 0) { const videoId = typeof video.id === 'object' ? video.id.videoId : video.id; if (!videoId) { console.error("No videoId:", video); return; } if (!state.playersReady) { state.queuedTrack = { video, queue, queueIndex }; updatePlayerUI(video); showFullPlayer(); setPlayIcon(true); return; } state.currentTrack = video; state.currentQueue = queue; state.currentQueueIndex = queueIndex; state.queuedTrack = null; addToRecents(video); loadAndPlayById(videoId, true); updatePlayerUI(video); if (!document.hidden) showFullPlayer(); updatePlayingIndicator(); }
     function togglePlayPause() { if (!state.playersReady && state.queuedTrack) { const { video, queue, queueIndex } = state.queuedTrack; playTrack(video, queue, queueIndex); return; } const active = getActivePlayer(); if (!active || !state.currentTrack) return; try { const st = (typeof active.getPlayerState === 'function') ? active.getPlayerState() : -1; if (st === YT.PlayerState.PLAYING) active.pauseVideo(); else active.playVideo(); } catch(e) { console.warn("togglePlayPause error", e); } }
     function playNext() { if (!state.currentQueue.length) return; if (state.isLoop) { playTrack(state.currentTrack, state.currentQueue, state.currentQueueIndex); return; } let nextIndex = state.isShuffle ? Math.floor(Math.random() * state.currentQueue.length) : (state.currentQueueIndex + 1) % state.currentQueue.length; playTrack(state.currentQueue[nextIndex], state.currentQueue, nextIndex); }
@@ -260,78 +185,7 @@ function loadAndPlayById(videoId, autoplay = true) {
     function openConfirmModal(message, onConfirm) { const backdrop = document.createElement('div'); backdrop.className = 'modal-backdrop'; backdrop.id = 'confirm-modal-backdrop'; const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3 class="text-lg font-semibold">Confirmar Acción</h3><p class="text-gray-300 my-4">${message}</p><div class="flex gap-2 mt-4 justify-end"><button id="modal-confirm-yes" class="px-3 py-1 bg-red-600 rounded">Sí, eliminar</button><button id="modal-confirm-no" class="px-3 py-1 bg-gray-600 rounded">Cancelar</button></div>`; backdrop.appendChild(modal); document.body.appendChild(backdrop); const close = () => { if (backdrop.parentNode) document.body.removeChild(backdrop); }; modal.querySelector('#modal-confirm-no').addEventListener('click', close); backdrop.addEventListener('click', (e) => { if(e.target === backdrop) close(); }); modal.querySelector('#modal-confirm-yes').addEventListener('click', () => { onConfirm(); close(); }); }
     function openLibraryOptionsModal() { if (!state.currentTrack) { showToast('No hay canción seleccionada.'); return; } const backdrop = document.createElement('div'); backdrop.className = 'modal-backdrop'; backdrop.id = 'library-options-backdrop'; const modal = document.createElement('div'); modal.className = 'modal'; modal.innerHTML = `<h3>Opciones de Biblioteca</h3><div id="modal-content"><p class="text-xs text-gray-400 mb-2">Añade esta canción a una biblioteca existente o crea una nueva.</p></div><div id="library-list-modal" class="max-h-40 overflow-y-auto my-3"></div><div id="create-library-form" class="hidden mt-3"><label class="text-xs text-gray-400">Nombre de la nueva biblioteca</label><input id="modal-create-library-input" class="w-full bg-gray-700 rounded p-2 mt-2" placeholder="Ej: Mix de Rock" /><div class="flex gap-2 mt-2 justify-end"><button id="modal-create-confirm" class="px-3 py-1 bg-blue-600 rounded">Crear y Añadir</button><button id="modal-create-cancel-form" class="px-3 py-1 bg-gray-600 rounded">Cancelar</button></div></div><div id="modal-main-actions" class="flex gap-2 mt-4 justify-end"><button id="modal-add-to-lib-btn" class="px-3 py-1 bg-blue-600 rounded">Añadir</button><button id="modal-new-lib-btn" class="px-3 py-1 bg-green-600 rounded">Crear Nueva</button><button id="modal-cancel-btn" class="px-3 py-1 bg-gray-600 rounded">Cerrar</button></div>`; backdrop.appendChild(modal); document.body.appendChild(backdrop); const content = modal.querySelector('#library-list-modal'), createForm = modal.querySelector('#create-library-form'), mainActions = modal.querySelector('#modal-main-actions'), addBtn = modal.querySelector('#modal-add-to-lib-btn'); if (!state.libraries.length) { content.innerHTML = `<p class="text-sm text-gray-300">No hay bibliotecas locales. Debes crear una.</p>`; addBtn.classList.add('hidden'); } else { const select = document.createElement('select'); select.className = 'w-full bg-gray-700 text-white rounded p-2'; select.id = 'modal-library-select'; select.innerHTML = state.libraries.map(lib => `<option value="${lib.id}">${lib.name} (${lib.items.length})</option>`).join(''); content.appendChild(select); } const close = () => { if (backdrop.parentNode) document.body.removeChild(backdrop); }; modal.querySelector('#modal-cancel-btn').addEventListener('click', close); backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); }); modal.querySelector('#modal-new-lib-btn').addEventListener('click', () => { createForm.classList.remove('hidden'); mainActions.classList.add('hidden'); content.classList.add('hidden'); }); modal.querySelector('#modal-create-cancel-form').addEventListener('click', () => { createForm.classList.add('hidden'); mainActions.classList.remove('hidden'); content.classList.remove('hidden'); }); modal.querySelector('#modal-create-confirm').addEventListener('click', () => { const input = modal.querySelector('#modal-create-library-input'), name = input.value.trim(); if (name) { const newLib = createLibrary(name); if (newLib) addCurrentTrackToLibrary(newLib.id); close(); } else { showToast('Ingresa un nombre válido.'); } }); modal.querySelector('#modal-add-to-lib-btn').addEventListener('click', () => { if (!state.libraries.length) return; const selectEl = document.getElementById('modal-library-select'); if (!selectEl) return; addCurrentTrackToLibrary(selectEl.value); close(); }); }
     function showToast(text, ms = 2500) { try { const t = document.createElement('div'); t.className = 'toast'; t.textContent = text; dom.toastRoot.appendChild(t); setTimeout(()=> { t.style.transition = 'opacity 300ms'; t.style.opacity = '0'; setTimeout(()=> { if (t.parentNode) t.parentNode.removeChild(t); }, 320); }, ms); } catch(e){ console.warn('toast error', e); } }
-function handleVisibilityChange() {
-    if (!state.playersReady || !state.currentTrack || state.transferInProgress) return;
-
-    const videoId = typeof state.currentTrack.id === 'object' ? state.currentTrack.id.videoId : state.currentTrack.id;
-    if (!videoId) return;
-
-    let source, target;
-    if (document.hidden) {
-        source = state.visiblePlayer;
-        target = state.hiddenPlayer;
-    } else {
-        source = state.hiddenPlayer;
-        target = state.visiblePlayer;
-    }
-
-    try {
-        const srcState = (source && source.getPlayerState) ? source.getPlayerState() : -1;
-        const isPlaying = (srcState === YT.PlayerState.PLAYING);
-        const isPaused = (srcState === YT.PlayerState.PAUSED);
-
-        if (isPlaying || isPaused) {
-            const currentTime = (source.getCurrentTime) ? source.getCurrentTime() : 0;
-            state.transferInProgress = true;
-
-            // Preferimos cue en el target (no forza recarga completa)
-            if (target && typeof target.cueVideoById === 'function') {
-                try {
-                    target.cueVideoById({ videoId, startSeconds: currentTime });
-
-                    // Si origen estaba reproduciendo, pedimos play en el target después de un pequeño delay.
-                    if (isPlaying) {
-                        setTimeout(() => {
-                            try { target.playVideo(); } catch(e) { console.warn("target.playVideo error", e); }
-                        }, 150);
-                    } else {
-                        // Mantenemos en pause si el origen estaba pausado
-                        setTimeout(() => {
-                            try { target.pauseVideo(); } catch(e) { /* ignore */ }
-                        }, 150);
-                    }
-
-                    // Después de un pequeño tiempo, detenemos (stop) el source para liberar recursos.
-                    setTimeout(() => {
-                        try { if (source && source.stopVideo) source.stopVideo(); } catch(e) { /* ignore */ }
-                        state.transferInProgress = false;
-                    }, 700);
-
-                } catch (err) {
-                    console.error("Error al transferir con cueVideoById:", err);
-                    // Fallback: carga normal (puede ser más susceptible a anuncios, pero mantenemos la app estable)
-                    try { if (target && typeof target.loadVideoById === 'function') target.loadVideoById({ videoId, startSeconds: currentTime }); } catch(e){}
-                    setTimeout(()=> { state.transferInProgress = false; }, 700);
-                }
-            } else {
-                // Si no hay cue, recarga "suave"
-                try {
-                    if (target && typeof target.loadVideoById === 'function') {
-                        target.loadVideoById({ videoId, startSeconds: currentTime });
-                        if (isPlaying) setTimeout(()=>{ try{ target.playVideo(); }catch(e){} },150);
-                    }
-                } catch(e) {
-                    console.warn("Transfer fallback error", e);
-                }
-                setTimeout(()=> { state.transferInProgress = false; }, 700);
-            }
-        }
-    } catch (e) {
-        console.error("Error en handleVisibilityChange:", e);
-        state.transferInProgress = false;
-    }
-}
-
+    function handleVisibilityChange() { if (!state.playersReady || !state.currentTrack || state.transferInProgress) return; const videoId = typeof state.currentTrack.id === 'object' ? state.currentTrack.id.videoId : state.currentTrack.id; if (!videoId) return; let source, target; if (document.hidden) { source = state.visiblePlayer; target = state.hiddenPlayer; } else { source = state.hiddenPlayer; target = state.visiblePlayer; } try { const srcState = (source && source.getPlayerState) ? source.getPlayerState() : -1; const isPlaying = (srcState === YT.PlayerState.PLAYING), isPaused = (srcState === YT.PlayerState.PAUSED); if (isPlaying || isPaused) { const currentTime = (source.getCurrentTime) ? source.getCurrentTime() : 0; state.transferInProgress = true; try { if(source && source.pauseVideo) source.pauseVideo(); } catch(e) {} if (target && target.loadVideoById) { target.loadVideoById({ videoId, startSeconds: currentTime }); if (isPlaying) setTimeout(() => { try { target.playVideo(); } catch(e) {} }, 150); else setTimeout(() => { try { target.pauseVideo(); } catch(e) {} }, 150); } setTimeout(() => { try { if(source && source.stopVideo) source.stopVideo(); } catch(e) {} }, 300); setTimeout(() => { state.transferInProgress = false; }, 400); } } catch (e) { console.error("Error en handleVisibilityChange:", e); state.transferInProgress = false; } }
 
     function initApp() {
         // Event listeners principales
@@ -400,5 +254,306 @@ function handleVisibilityChange() {
     }
     document.addEventListener('DOMContentLoaded', initApp);
 
-/* Exporta APP para debugging */
-window._app = APP;
+(function(){
+  'use strict';
+
+  // ---------------------------
+  // CONFIG: dominios/palabras a bloquear
+  // ---------------------------
+  const BLOCK_PATTERNS = [
+    'doubleclick.net','googlesyndication','googleadservices',
+    'pagead2.googlesyndication','adservice','adsystem','adnxs',
+    'adroll','adsrvr','adserver','amazon-adsystem','ads.yahoo',
+    'sponsor','promoted','advert', 'banner', 'ads.'
+  ];
+
+  const CLASS_ID_BLACKLIST = [
+    'ad','ads','adsbox','ad-container','ad-slot','adunit','ad-banner',
+    'sponsored','promoted','adbox','ad-wrap','banner','doubleclick'
+  ];
+
+  // ---------------------------
+  // UTIL: detectar URL o texto relacionado con anuncios
+  // ---------------------------
+  function looksLikeAdString(str) {
+    if (!str) return false;
+    const s = String(str).toLowerCase();
+    return BLOCK_PATTERNS.some(p => s.includes(p));
+  }
+
+  function elementLooksLikeAd(el){
+    try{
+      if(!el || el.nodeType !== 1) return false;
+      const tag = el.tagName || '';
+      const id = (el.id || '').toLowerCase();
+      const cls = (el.className || '').toString().toLowerCase();
+      const aria = (el.getAttribute && el.getAttribute('aria-label') || '').toLowerCase();
+      if (CLASS_ID_BLACKLIST.some(k => id.includes(k) || cls.includes(k) || aria.includes(k))) return true;
+
+      // chequear atributos comunes
+      const src = (el.src || el.getAttribute && el.getAttribute('src') || '').toString().toLowerCase();
+      const data = (el.dataset && Object.values(el.dataset).join(' ') || '').toLowerCase();
+      const text = (el.innerText || '').toLowerCase();
+
+      if (looksLikeAdString(src) || looksLikeAdString(data) || looksLikeAdString(text)) return true;
+
+      // iframes con src sospechoso
+      if (tag === 'IFRAME' && looksLikeAdString(src)) return true;
+      // scripts externos con src sospechoso
+      if (tag === 'SCRIPT' && looksLikeAdString(src)) return true;
+      // imágenes con src sospechoso
+      if (tag === 'IMG' && looksLikeAdString(src)) return true;
+
+      return false;
+    }catch(e){
+      return false;
+    }
+  }
+
+  // ---------------------------
+  // REEMPLAZAR fetch para bloquear peticiones a dominios de anuncios
+  // ---------------------------
+  try {
+    const _fetch = window.fetch;
+    window.fetch = function(input, init){
+      try {
+        const url = (typeof input === 'string') ? input : (input && input.url) || '';
+        if (looksLikeAdString(url)) {
+          // responder con 204 vacio
+          return Promise.resolve(new Response('', { status: 204, statusText: 'Blocked' }));
+        }
+      } catch(e){}
+      return _fetch.apply(this, arguments);
+    };
+  } catch(e){ console.warn('No se pudo override fetch', e); }
+
+  // ---------------------------
+  // REEMPLAZAR XMLHttpRequest para abortar requests a dominios de anuncios
+  // ---------------------------
+  try {
+    const XHRopen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      try {
+        if (looksLikeAdString(url)) {
+          this.__isBlockedByAdblock = true;
+        }
+      } catch(e){}
+      return XHRopen.apply(this, arguments);
+    };
+    const XHRsend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function(body) {
+      if (this.__isBlockedByAdblock) {
+        try { this.abort(); } catch(e){}
+        // simular error/response vacío para quien espera respuesta
+        const ev = new Event('error');
+        setTimeout(()=> this.dispatchEvent(ev), 0);
+        return;
+      }
+      return XHRsend.apply(this, arguments);
+    };
+  } catch(e){ console.warn('No se pudo override XHR', e); }
+
+  // ---------------------------
+  // INTERCEPTAR creación de elementos (iframe, script, img) y evitar src maliciosos
+  // ---------------------------
+  try {
+    const origCreate = Document.prototype.createElement;
+    Document.prototype.createElement = function(tagName, options){
+      const el = origCreate.call(this, tagName, options);
+      const tag = (tagName || '').toUpperCase();
+
+      // para iframes/scripts/imgs evitamos que se establezcan src bloqueados
+      if (tag === 'IFRAME' || tag === 'SCRIPT' || tag === 'IMG') {
+        // interceptar setAttribute
+        const origSet = el.setAttribute;
+        el.setAttribute = function(name, value){
+          try {
+            if ((name === 'src' || name === 'data' || name === 'srcdoc') && looksLikeAdString(value)) {
+              // bloquear
+              return;
+            }
+          } catch(e){}
+          return origSet.apply(this, arguments);
+        };
+        // interceptar propiedad src si existe
+        try {
+          Object.defineProperty(el, 'src', {
+            set: function(v){
+              if (looksLikeAdString(v)) return;
+              // usar setAttribute por compatibilidad
+              HTMLIFrameElement.prototype.setAttribute.call(this, 'src', v);
+            },
+            get: function(){
+              return this.getAttribute('src');
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch(e){}
+      }
+
+      return el;
+    };
+  } catch(e){ console.warn('No se pudo override createElement', e); }
+
+  // ---------------------------
+  // OVERWRITE appendChild/insertBefore para eliminar nodos detectados como anuncios
+  // ---------------------------
+  try {
+    const origAppend = Element.prototype.appendChild;
+    Element.prototype.appendChild = function(node){
+      try {
+        if (elementLooksLikeAd(node)) {
+          // evitar añadidura
+          return node;
+        }
+      } catch(e){}
+      return origAppend.apply(this, arguments);
+    };
+    const origInsertBefore = Element.prototype.insertBefore;
+    Element.prototype.insertBefore = function(newNode, referenceNode){
+      try {
+        if (elementLooksLikeAd(newNode)) {
+          return newNode;
+        }
+      } catch(e){}
+      return origInsertBefore.apply(this, arguments);
+    };
+    const origReplaceChild = Element.prototype.replaceChild;
+    Element.prototype.replaceChild = function(newChild, oldChild){
+      try {
+        if (elementLooksLikeAd(newChild)) {
+          return oldChild;
+        }
+      } catch(e){}
+      return origReplaceChild.apply(this, arguments);
+    };
+  } catch(e){ console.warn('No se pudo override append/insert/replace', e); }
+
+  // ---------------------------
+  // CSS INJECT: ocultar por clases/ids comunes
+  // ---------------------------
+  try {
+    const css = `
+      [class*="ad"], [class*="ads"], [id*="ad"], [id*="ads"],
+      [class*="banner"], [id*="banner"], [class*="sponsor"], [id*="sponsor"] {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        overflow: hidden !important;
+      }
+      iframe[src*="ads"], iframe[src*="doubleclick"], iframe[src*="googlesyndication"] {
+        display:none !important; visibility:hidden !important; width:0; height:0;
+      }
+    `;
+    const st = document.createElement('style');
+    st.appendChild(document.createTextNode(css));
+    document.head && document.head.appendChild(st);
+  } catch(e){}
+
+  // ---------------------------
+  // MUTATION OBSERVER: limpiar DOM existente y futuro
+  // ---------------------------
+  function removeIfAd(node){
+    try {
+      if (!node) return;
+      if (node.nodeType === 1 && elementLooksLikeAd(node)) {
+        node.remove && node.remove();
+        return true;
+      }
+    } catch(e){}
+    return false;
+  }
+
+  function scanAndRemove(root){
+    try {
+      root = root || document;
+      const all = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      for (let i=0;i<all.length;i++){
+        const el = all[i];
+        removeIfAd(el);
+      }
+    } catch(e){}
+  }
+
+  // limpieza inicial
+  try {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', ()=> scanAndRemove(document));
+    } else {
+      scanAndRemove(document);
+    }
+  } catch(e){}
+
+  // observar cambios
+  try {
+    const mo = new MutationObserver(function(muts){
+      for (const m of muts) {
+        if (m.addedNodes && m.addedNodes.length) {
+          m.addedNodes.forEach(n => {
+            removeIfAd(n);
+            // si tiene hijos, escanéalos rápido
+            if (n.querySelectorAll) {
+              try {
+                const sub = n.querySelectorAll('*');
+                for (let i=0;i<sub.length;i++) removeIfAd(sub[i]);
+              } catch(e){}
+            }
+          });
+        }
+        // también observar atributos cambiados (por ejemplo, src añadido)
+        if (m.type === 'attributes' && m.target) {
+          removeIfAd(m.target);
+        }
+      }
+    });
+    mo.observe(document.documentElement || document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src','data','class','id','style']
+    });
+  } catch(e){ console.warn('MutationObserver error', e); }
+
+  // ---------------------------
+  // Prevención extra: interceptar setInterval/setTimeout que inyectan anuncios masivamente
+  // ---------------------------
+  try {
+    const origSetInterval = window.setInterval;
+    window.setInterval = function(fn, t){
+      const wrapped = function(){
+        try{ fn(); }catch(e){}
+        // tras ejecución, limpiar DOM
+        scanAndRemove(document);
+      };
+      return origSetInterval.call(this, wrapped, t);
+    };
+    const origSetTimeout = window.setTimeout;
+    window.setTimeout = function(fn, t){
+      const wrapped = function(){
+        try{ fn(); }catch(e){}
+        scanAndRemove(document);
+      };
+      return origSetTimeout.call(this, wrapped, t);
+    };
+  } catch(e){}
+
+  // ---------------------------
+  // Mensaje de diagnóstico (opcional)
+  // ---------------------------
+  try {
+    console.info('AdCleaner activo: reglas=', BLOCK_PATTERNS.length, 'clases=', CLASS_ID_BLACKLIST.length);
+  } catch(e){}
+
+  // ---------------------------
+  // NOTAS Y LIMITACIONES (no eliminar):
+  //  - Esto intenta bloquear anuncios inyectados por JS, fetch/XHR y creación dinámica de elementos.
+  //  - No puede acceder ni modificar el contenido dentro de iframes de otro origen (cross-origin).
+  //  - Recursos incluidos estáticamente en HTML (scripts/iframes cargados antes de ejecutar este script)
+  //    pueden haberse cargado ya; coloca este script lo más arriba posible antes de otros scripts.
+  //  - El Service Worker + CSP + hosting de tus propios videos es la forma 100% fiable para evitar anuncios.
+  // ---------------------------
+
+})();
+
