@@ -557,3 +557,8 @@
 
 })();
 
+
+
+
+/* Exporta APP para debugging */
+window._app = APP;
